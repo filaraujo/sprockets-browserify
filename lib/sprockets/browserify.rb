@@ -13,13 +13,15 @@ module Sprockets
     end
 
     def evaluate(scope, locals, &block)
-      if (scope.pathname.dirname+'package.json').exist?
+
+      @path = Pathname.new(scope.environment.root+"/package.json")
+      if @path.exist?
         deps = `#{browserify_executable} --list #{scope.pathname}`
         raise "Error finding dependencies" unless $?.success?
 
         deps.lines.drop(1).each{|path| scope.depend_on path.strip}
 
-        @output ||= `#{browserify_executable} -d #{scope.pathname}`
+        @output ||= `#{browserify_executable} #{browserify_options} #{scope.pathname}`
         raise "Error compiling dependencies" unless $?.success?
         @output
       else
@@ -35,6 +37,18 @@ module Sprockets
 
     def browserify_executable
       @browserify_executable ||= gem_dir + 'node_modules/browserify/bin/cmd.js'
+    end
+
+    def browserify_options
+      options = Array.new
+
+      if ENV['RAILS_ENV'] != 'development'
+        options.push('-t uglifyify')
+      end
+
+      options.push('-d')
+
+      @browserify_options = options.join(' ')
     end
 
   end
