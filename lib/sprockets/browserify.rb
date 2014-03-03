@@ -14,8 +14,13 @@ module Sprockets
 
     def evaluate(scope, locals, &block)
 
-      @path = Pathname.new(scope.environment.root+"/package.json")
-      if @path.exist?
+      @browserify = false
+
+      File.open(scope.pathname, &:readline).scan(/sprockets.*browserify:\s*(false|true)/) do |groups|
+        @browserify = groups[0] == 'true'
+      end
+
+      if (File.exist? "#{scope.environment.root}/package.json") && @browserify
         deps = `#{browserify_executable} --list #{scope.pathname}`
         raise "Error finding dependencies" unless $?.success?
 
@@ -40,15 +45,13 @@ module Sprockets
     end
 
     def browserify_options
-      options = Array.new
+      options = ['-d']
 
       if ENV['RAILS_ENV'] != 'development'
         options.push('-t uglifyify')
       end
 
-      options.push('-d')
-
-      @browserify_options = options.join(' ')
+      options.join(' ')
     end
 
   end
